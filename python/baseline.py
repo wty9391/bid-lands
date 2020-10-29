@@ -7,44 +7,44 @@ def getTrainData_b(ifname_data,ifname_bid):
     # calculate line number
     line_num = 0
     fi = open(ifname_data, 'r')
-    for line in fi.xreadlines():
+    for line in fi.readline():
+    # for line in fi.xreadlines():
         if line.strip():
             line_num += 1
-    fi.close()
     seg_point = (line_num-1) / 3
 
     # get all price (2/3)
-    fin = open(ifname_data,'r')
     i = 0
     w = []
     winAuctions = []
     winbid = {}
     losebid = {}
-    for line in fin:
+    fi.seek(0)
+    for line in fi.readline():
         i += 1
         if i<=seg_point+1:
             continue
         w.append(eval(line.split()[PAY_PRICE_INDEX]))
-    fin.close()
+    fi.close()
 
     i = -1
     fin = open(ifname_bid,'r')
-    for line in fin:
+    for line in fin.readline():
         i += 1
         linelist = line.split()
         mybidprice = eval(linelist[0])
         winAuction = eval(linelist[1])
         winAuctions.append(winAuction)
         if winAuction==1:
-            if not winbid.has_key(w[i]):
+            if w[i] not in winbid:
                 winbid[w[i]] = 0
             winbid[w[i]] += 1
         elif winAuction==0:
-            if not losebid.has_key(mybidprice):
+            if mybidprice not in losebid:
                 losebid[mybidprice] = 0
             losebid[mybidprice] += 1
     fin.close()
-    print len(w),i+1
+    print(len(w),i+1)
 
     return w,winAuctions,winbid,losebid
 
@@ -66,9 +66,9 @@ def baseline(info):
     fout_q = open(info.fname_baseline_q,'w')
     fout_w = open(info.fname_baseline_w,'w')
     w,winAuctions,winbid,losebid = getTrainData_b(info.fname_trainlog,info.fname_trainbid)
-    print "trainData read success."
+    print("trainData read success.")
     wt = getTestData_b(info.fname_testlog)
-    print "testData read success."
+    print("testData read success.")
 
     # get priceSet
     wcount = [0]*UPPER
@@ -85,7 +85,7 @@ def baseline(info):
 
     q = calProbDistribution(wcount,winbid,losebid,minPrice,maxPrice,info)
     w = q2w(q)
-    print "q calculation success."
+    print("q calculation success.")
 
     if len(q)!=0:
         fout_q.write(str(q[0]))
@@ -106,7 +106,7 @@ def baseline(info):
     for i in range(0,len(priceSet)):
         pay_price = priceSet[i]
         n[pay_price] += 1
-    print "n calculation success."
+    print("n calculation success.")
 
     # qt,wt calculation
     qt = calProbDistribution_n(n,minPrice,maxPrice,info)
@@ -116,8 +116,8 @@ def baseline(info):
     # ANLP
     fout_baseline.write("baseline campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid+'\n')
     fout_baseline.write("laplace "+str(info.laplace)+"\n")
-    print "baseline campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid
-    print "laplace "+str(info.laplace)
+    print("baseline campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid)
+    print("laplace "+str(info.laplace))
     for step in STEP_LIST:
         qi = changeBucketUniform(q,step)
         ni = deepcopy(n)
@@ -126,8 +126,8 @@ def baseline(info):
 
         fout_baseline.write("bucket "+str(bucket)+" step "+str(step)+"\n")
         fout_baseline.write("Average negative log probability = "+str(anlp)+"  N = "+str(N)+"\n")
-        print "bucket "+str(bucket)+" step "+str(step)
-        print "Average negative log probability = "+str(anlp)+"  N = "+str(N)
+        print("bucket "+str(bucket)+" step "+str(step))
+        print("Average negative log probability = "+str(anlp)+"  N = "+str(N))
 
     # KLD & pearsonr
     bucket = len(q)
@@ -136,8 +136,8 @@ def baseline(info):
     N = sum(n)
     fout_baseline.write("bucket "+str(bucket)+" step "+str(step)+"\n")
     fout_baseline.write("KLD = "+str(KLD)+"  N = "+str(N)+"\n")
-    print "bucket "+str(bucket)+" step "+str(step)
-    print "KLD = "+str(KLD)+"  N = "+str(N)
+    print("bucket "+str(bucket)+" step "+str(step))
+    print("KLD = "+str(KLD)+"  N = "+str(N))
 
     fout_baseline.close()
     fout_q.close()
@@ -146,23 +146,23 @@ def baseline(info):
     return q,w
 
 if __name__ == '__main__':
-    IFROOT = '..\\make-ipinyou-data\\'
-    OFROOT = '..\\data\\SurvivalModel\\'
+    IFROOT = '../make-ipinyou-data/'
+    OFROOT = '../data/SurvivalModel/'
     BASE_BID = '0'
     suffix_list = ['n','s','f']
     q = {}
     w = {}
 
     for campaign in CAMPAIGN_LIST:
-        print
-        print campaign
+        # print
+        print(campaign)
         q[campaign] = {}
         w[campaign] = {}
         for mode in MODE_LIST:
             q[campaign][mode] = {}
             w[campaign][mode] = {}
             for laplace in [LAPLACE]:
-                print MODE_NAME_LIST[mode],
+                print(MODE_NAME_LIST[mode],)
                 info = Info()
                 info.basebid = BASE_BID
                 info.laplace = laplace
@@ -172,37 +172,37 @@ if __name__ == '__main__':
                 q[campaign][mode][laplace] = []
                 w[campaign][mode][laplace] = []
                 # create os directory
-                if not os.path.exists(OFROOT+campaign+'\\'+modeName):
-                    os.makedirs(OFROOT+campaign+'\\'+modeName)
+                if not os.path.exists(OFROOT+campaign+'/'+modeName):
+                    os.makedirs(OFROOT+campaign+'/'+modeName)
                 # info assignment
                 info.campaign = campaign
-                info.fname_trainlog = IFROOT+campaign+'\\train.log.txt'
-                info.fname_testlog = IFROOT+campaign+'\\test.log.txt'
-                info.fname_nodeData = OFROOT+campaign+'\\'+modeName+'\\nodeData_'+campaign+suffix+'.txt'
-                info.fname_nodeInfo = OFROOT+campaign+'\\'+modeName+'\\nodeInfos_'+campaign+suffix+'.txt'
+                info.fname_trainlog = IFROOT+campaign+'/train.log.txt'
+                info.fname_testlog = IFROOT+campaign+'/test.log.txt'
+                info.fname_nodeData = OFROOT+campaign+'/'+modeName+'/nodeData_'+campaign+suffix+'.txt'
+                info.fname_nodeInfo = OFROOT+campaign+'/'+modeName+'/nodeInfos_'+campaign+suffix+'.txt'
 
-                info.fname_trainbid = IFROOT+campaign+'\\train_bid.txt'
-                info.fname_testbid = IFROOT+campaign+'\\test_bid.txt'
-                info.fname_baseline = OFROOT+campaign+'\\'+modeName+'\\baseline_'+campaign+suffix+'.txt'
+                info.fname_trainbid = IFROOT+campaign+'/train_bid.txt'
+                info.fname_testbid = IFROOT+campaign+'/test_bid.txt'
+                info.fname_baseline = OFROOT+campaign+'/'+modeName+'/baseline_'+campaign+suffix+'.txt'
 
-                info.fname_monitor = OFROOT+campaign+'\\'+modeName+'\\monitor_'+campaign+suffix+'.txt'
-                info.fname_testKmeans = OFROOT+campaign+'\\'+modeName+'\\testKmeans_'+campaign+suffix+'.txt'
-                info.fname_testSurvival = OFROOT+campaign+'\\'+modeName+'\\testSurvival_'+campaign+suffix+'.txt'
+                info.fname_monitor = OFROOT+campaign+'/'+modeName+'/monitor_'+campaign+suffix+'.txt'
+                info.fname_testKmeans = OFROOT+campaign+'/'+modeName+'/testKmeans_'+campaign+suffix+'.txt'
+                info.fname_testSurvival = OFROOT+campaign+'/'+modeName+'/testSurvival_'+campaign+suffix+'.txt'
 
-                info.fname_evaluation = OFROOT+campaign+'\\'+modeName+'\\evaluation_'+campaign+suffix+'.txt'
-                info.fname_baseline_q = OFROOT+campaign+'\\'+modeName+'\\baseline_q_'+campaign+suffix+'.txt'
-                info.fname_tree_q = OFROOT+campaign+'\\'+modeName+'\\tree_q_'+campaign+suffix+'.txt'
-                info.fname_baseline_w = OFROOT+campaign+'\\'+modeName+'\\baseline_w_'+campaign+suffix+'.txt'
-                info.fname_tree_w = OFROOT+campaign+'\\'+modeName+'\\tree_w_'+campaign+suffix+'.txt'
+                info.fname_evaluation = OFROOT+campaign+'/'+modeName+'/evaluation_'+campaign+suffix+'.txt'
+                info.fname_baseline_q = OFROOT+campaign+'/'+modeName+'/baseline_q_'+campaign+suffix+'.txt'
+                info.fname_tree_q = OFROOT+campaign+'/'+modeName+'/tree_q_'+campaign+suffix+'.txt'
+                info.fname_baseline_w = OFROOT+campaign+'/'+modeName+'/baseline_w_'+campaign+suffix+'.txt'
+                info.fname_tree_w = OFROOT+campaign+'/'+modeName+'/tree_w_'+campaign+suffix+'.txt'
 
-                info.fname_pruneNode = OFROOT+campaign+'\\'+modeName+'\\pruneNode_'+campaign+suffix+'.txt'
-                info.fname_pruneEval = OFROOT+campaign+'\\'+modeName+'\\pruneEval_'+campaign+suffix+'.txt'
-                info.fname_testwin = OFROOT+campaign+'\\'+modeName+'\\testwin_'+campaign+suffix+'.txt'
+                info.fname_pruneNode = OFROOT+campaign+'/'+modeName+'/pruneNode_'+campaign+suffix+'.txt'
+                info.fname_pruneEval = OFROOT+campaign+'/'+modeName+'/pruneEval_'+campaign+suffix+'.txt'
+                info.fname_testwin = OFROOT+campaign+'/'+modeName+'/testwin_'+campaign+suffix+'.txt'
 
                 q[campaign][mode][laplace],w[campaign][mode][laplace] = baseline(info)
 
         if len(MODE_LIST)==3:
-            fdir = OFROOT+campaign+'\\compare\\'
+            fdir = OFROOT+campaign+'/compare/'
             if not os.path.exists(fdir):
                 os.makedirs(fdir)
 
@@ -212,7 +212,7 @@ if __name__ == '__main__':
             fout_q = open(fdir+'q_l'+str(LAPLACE)+'.txt','w')
             fout_w = open(fdir+'w_l'+str(LAPLACE)+'.txt','w')
             # make length equal
-            print "len:",len(q[campaign][NORMAL][laplace]),len(q[campaign][SURVIVAL][laplace]),len(q[campaign][FULL][laplace])
+            print("len:",len(q[campaign][NORMAL][laplace]),len(q[campaign][SURVIVAL][laplace]),len(q[campaign][FULL][laplace]))
             maxLen = max(len(q[campaign][NORMAL][laplace]),len(q[campaign][SURVIVAL][laplace]),len(q[campaign][FULL][laplace]))
             fillLen(q[campaign][NORMAL][laplace],maxLen)
             fillLen(q[campaign][SURVIVAL][laplace],maxLen)
@@ -262,7 +262,7 @@ if __name__ == '__main__':
             title("market price probability compare")
             xlabel("market price")
             ylabel("market price probability")
-            savefig(fdir+'\\q_'+campaign+'_l'+str(laplace)+'.png')
+            savefig(fdir+'/q_'+campaign+'_l'+str(laplace)+'.png')
             close(1)
 
             figure(2)
@@ -272,5 +272,5 @@ if __name__ == '__main__':
             title("win probability compare")
             xlabel("market price")
             ylabel("win probability")
-            savefig(fdir+'\\w_'+campaign+'_l'+str(laplace)+'.png')
+            savefig(fdir+'/w_'+campaign+'_l'+str(laplace)+'.png')
             close(2)

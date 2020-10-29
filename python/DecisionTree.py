@@ -3,6 +3,8 @@ from copy import deepcopy
 from math import *
 from collections import defaultdict
 
+import pickle
+
 UPPER = 301
 
 LAPLACE = 3
@@ -25,7 +27,7 @@ TREE_DEPTH = 50
 #TREE_DEPTH = 80
 TREE_DEPTH_LIST = [1,2,3,4,5,6,8,10,18,22,28,30,40]
 #TREE_DEPTH_LIST = [1,2,3,4,5,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40]
-MODE_LIST = [NORMAL,SURVIVAL]
+MODE_LIST = [SURVIVAL]
 #MODE_LIST = [NORMAL,SURVIVAL,FULL]
 CAMPAIGN_LIST = ['2997']
 #CAMPAIGN_LIST = ['2259','2261','2997']
@@ -46,19 +48,32 @@ MY_BID_INDEX = 30
 WIN_AUCTION_INDEX = 31
 REGION_INDEX = 9
 
-#FEATURE_LIST = [1,2,7,10,11,16,17,18,21]
+# FEATURE_LIST = [1,2,7,10,11,16,17,18,21]
 FEATURE_LIST = [1,2,7,9,10,11,16,17,18,21]
 FEAT_NAME = ['click',       'weekday',      'hour',             'bidid',        'timestamp',    'logtype',  'ipinyouid',    'useragent',
              'IP',          'region',       'city',             'adexchange',   'domain',       'url',      'urlid',        'slotid',
              'slotwidth',   'slotheight',   'slotvisibility',   'slotformat',   'slotprice',    'creative', 'bidprice',     'payprice',
              'keypage',     'advertiser',   'usertag',          'nclick',       'nconversation','index',    'mybidprice',   'winAuction']
 
+FEAT_NAME = ['click', 'weekday', 'hour', 'bidid', 'timestamp',
+             'logtype', 'ipinyouid', 'useragent', 'IP', 'region',
+             'city', 'adexchange', 'domain', 'url', 'urlid',
+             'slotid', 'slotwidth', 'slotheight', 'slotvisibility', 'slotformat',
+             'slotprice', 'creative', 'bidprice', 'payprice', 'keypage',
+             'advertiser', 'usertag', 'index',    'mybidprice',   'winAuction'
+]
+PAY_PRICE_INDEX = FEAT_NAME.index('payprice')
+REGION_INDEX = FEAT_NAME.index('region')
+MY_BID_INDEX = FEAT_NAME.index('mybidprice')
+WIN_AUCTION_INDEX = FEAT_NAME.index('winAuction')
+
 class Info:
     mode = NORMAL   # NORMAL or SURVIVAL
     campaign = ""
     basebid = '0'
     laplace = 3     # coefficient of laplace smoothing
-    leafSize = 3000
+    # leafSize = 3000
+    leafSize = 10000
     treeDepth = 50
     #
     fname_trainlog = ""
@@ -173,77 +188,51 @@ class NodeInfo:
         fout.close()
 
 # get traindata
-def getTrainData(ifname_data,ifname_bid):
-    # calculate line number
-    line_num = 0
-    fi = open(ifname_data, 'r')
-    for line in fi.xreadlines():
-        if line.strip():
-            line_num += 1
-    fi.close()
-    seg_point = (line_num-1) / 3
-
+def getTrainData(trainlog, result_root):
     # get data
-    fin = open(ifname_data,'r')
-    lines = fin.readlines()
+    fin = open(trainlog, 'r')
+    z_train = pickle.load(open(result_root + '/z_train', 'rb'))
+    b_train = pickle.load(open(result_root + '/b_train', 'rb'))
+    is_win = b_train > z_train
+
     dataset = []
     featName = []
-    i = -2
-    for line in lines:
-        i += 1
+    i = -1
+    for line in fin:
         if i == -1:
-            featName = line.split()
-            featName.append('nclick')       # 27
-            featName.append('nconversation')# 28
-            featName.append('index')        # 29
-            featName.append('mybidprice')   # 30
-            featName.append('winAuction')   # 31
+            featName = line.split('\t')
+            featName.append('index')
+            featName.append('mybidprice')
+            featName.append('winAuction')
+            i += 1
             continue
-        if i<=seg_point-1:
-            continue
-
-        items = line.split()
+        items = line.split('\t')
+        items.append(str(i))  # index from 0
+        items.append(str(int(b_train[i][0])))
+        items.append(str(int(is_win[i][0])))
         dataset.append(items)
-        dataset[len(dataset)-1].append('0')              # virtual value
-        dataset[len(dataset)-1].append('0')              # virtual value
-        dataset[len(dataset)-1].append(str(len(dataset)-1))           # ith row from i=0
-    fin.close()
-
-    fin = open(ifname_bid,'r')
-    lines = fin.readlines()
-    i2 = -1
-    for line in lines:
-        i2 += 1
-        linelist = line.split()
-        mybidprice = linelist[0]
-        winAuction = linelist[1]
-        dataset[i2].append(mybidprice)
-        dataset[i2].append(winAuction)
-    # monitor
-    print i-seg_point+1,i2+1
-
+        i += 1
     fin.close()
     return dataset
 
 def getTestData(ifname_data):
-    fin = open(ifname_data,'r')
-    lines = fin.readlines()
+    fin = open(ifname_data, 'r')
     dataset = []
     featName = []
-    i = -2
-    for line in lines:
-        i += 1
+    i = -1
+    for line in fin:
         if i == -1:
-            featName = line.split()
+            featName = line.split('\t')
             featName.append('index')        # 29
             featName.append('mybidprice')   # 30
             featName.append('winAuction')   # 31
+            i += 1
             continue
-        items = line.split()
+        items = line.split('\t')
+        items.append(str(i))  # ith row from i=0
         dataset.append(items)
-        dataset[i].append(str(i))            #ith row from i=0
+        i += 1
     fin.close()
-
     return dataset
 
 def n2q(n):
@@ -303,25 +292,25 @@ def dataset2s(dataset,featIndex):
     s = {}
     winbids = {}
     losebids = {}
-    for i in range(0,len(dataset)):
-        pay_price = eval(dataset[i][PAY_PRICE_INDEX])
-        mybidprice = eval(dataset[i][MY_BID_INDEX])
+    for i in range(len(dataset)):
+        pay_price = int(dataset[i][PAY_PRICE_INDEX])
+        mybidprice = int(dataset[i][MY_BID_INDEX])
         # losebids
-        if not losebids.has_key(dataset[i][featIndex]):
+        if dataset[i][featIndex] not in losebids:
             losebids[ dataset[i][featIndex] ] = {}
-        if eval(dataset[i][WIN_AUCTION_INDEX])==0:
-            if not losebids[ dataset[i][featIndex] ].has_key(mybidprice):
+        if int(dataset[i][WIN_AUCTION_INDEX])==0:
+            if mybidprice not in losebids[ dataset[i][featIndex] ]:
                 losebids[ dataset[i][featIndex] ][mybidprice] = 0
             losebids[ dataset[i][featIndex] ][mybidprice] += 1
             continue
         # winbids
-        if not winbids.has_key(dataset[i][featIndex]):
+        if dataset[i][featIndex] not in winbids:
             winbids[ dataset[i][featIndex] ] = {}
-        if not winbids[ dataset[i][featIndex] ].has_key(pay_price):
+        if pay_price not in winbids[ dataset[i][featIndex] ]:
             winbids[ dataset[i][featIndex] ][pay_price] = 0
         winbids[ dataset[i][featIndex] ][pay_price] += 1
 
-        if not s.has_key(dataset[i][featIndex]):
+        if dataset[i][featIndex] not in s:
             s[ dataset[i][featIndex] ] = [0]*UPPER
         s[ dataset[i][featIndex] ][pay_price] += 1
 
@@ -329,8 +318,8 @@ def dataset2s(dataset,featIndex):
 
 def s2dataset(s,orgDataset,featIndex):
     dataset = []
-    for i in range(0,len(orgDataset)):
-        if s.has_key(orgDataset[i][featIndex]):
+    for i in range(len(orgDataset)):
+        if orgDataset[i][featIndex] in s:
             dataset.append(orgDataset[i])
     return dataset
 
@@ -366,14 +355,14 @@ def changeBucketUniform(x,step):
 
 def KLDivergence(_P,_Q,step = STEP):
     if len(_P)!=len(_Q):
-        print 'kld:',len(_P),len(_Q)
+        print ('kld error:',len(_P),len(_Q))
         return 0
     P = changeBucketUniform(_P,step)
     Q = changeBucketUniform(_Q,step)
     KLD = 0.0
-    for i in range(0,len(P)):
+    for i in range(len(P)):
         if Q[i] == 0:
-            print i,
+            print("Q["+str(i)+"]==0")
             continue
         KLD += P[i]*log(P[i]/Q[i])
 
@@ -381,7 +370,7 @@ def KLDivergence(_P,_Q,step = STEP):
 
 def pearsonr(x,y):
     if len(x)!=len(y):
-        print 'len(x) != len(y)'
+        print('len(x) != len(y)')
         return
     meanx = float(sum(x))/len(x)
     meany = float(sum(y))/len(y)
@@ -441,7 +430,7 @@ def calProbDistribution_s(s,winbids,losebids,minPrice,maxPrice,info):
     for fvalue in winbids.keys():
         if isinstance(winbids[fvalue],dict):
             for bid in winbids[fvalue].keys():
-                if not winbid.has_key(bid):
+                if bid not in winbid:
                     winbid[bid] = 0
                 winbid[bid] += winbids[fvalue][bid]
                 size += winbids[fvalue][bid]
@@ -453,7 +442,7 @@ def calProbDistribution_s(s,winbids,losebids,minPrice,maxPrice,info):
     for fvalue in losebids.keys():
         if isinstance(losebids[fvalue],dict):
             for bid in losebids[fvalue].keys():
-                if not losebid.has_key(bid):
+                if bid not in losebid:
                     losebid[bid] = 0
                 losebid[bid] += losebids[fvalue][bid]
                 size += losebids[fvalue][bid]
@@ -556,15 +545,15 @@ def kmeans(s,winbids,losebids,minPrice,maxPrice,info):
     len2 = 0
     lenk = {}
     #random split s into s1 and s2, and calculate minPrice,maxPrice
-    for i in range(0,len(s)/2):
-        k = s.keys()[i]
+    for i in range(int(len(s)/2)):
+        k = list(s.keys())[i]
         s1[k] = s[k]
         winbids1[k] = winbids[k]
         losebids1[k] = losebids[k]
         lenk[k] = sum(s[k])
         len1 += lenk[k]
-    for i in range(len(s)/2,len(s)):
-        k = s.keys()[i]
+    for i in range(int(len(s)/2),len(s)):
+        k = list(s.keys())[i]
         s2[k] = s[k]
         winbids2[k] = winbids[k]
         losebids2[k] = losebids[k]
@@ -593,7 +582,7 @@ def kmeans(s,winbids,losebids,minPrice,maxPrice,info):
         '''
         #print
         if count>=5:
-            print "("+str(count)+","+"%.7f"%KLD+")",
+            print("(count:"+str(count)+",KLD:"+"%.7f"%KLD+")",)
         # begin
         not_converged = 0
         #E-step:
@@ -615,7 +604,7 @@ def kmeans(s,winbids,losebids,minPrice,maxPrice,info):
             k1 = KLDivergence(mk,q1)
             k2 = KLDivergence(mk,q2)
             if k1<k2:
-                if s1.has_key(k):
+                if k in s1:
                     continue
                 if len2-lenk[k]<leafSize:
                     continue
@@ -624,13 +613,13 @@ def kmeans(s,winbids,losebids,minPrice,maxPrice,info):
                 winbids1[k] = winbids[k]
                 losebids1[k] = losebids[k]
                 len1 += lenk[k]
-                if s2.has_key(k):
+                if k in s2:
                     len2 -= lenk[k]
                     s2.pop(k)
                     winbids2.pop(k)
                     losebids2.pop(k)
             elif k1>k2:
-                if s2.has_key(k):
+                if k in s2:
                     continue
                 if len1-lenk[k]<leafSize:
                     continue
@@ -639,7 +628,7 @@ def kmeans(s,winbids,losebids,minPrice,maxPrice,info):
                 winbids2[k] = winbids[k]
                 losebids2[k] = losebids[k]
                 len2 += lenk[k]
-                if s1.has_key(k):
+                if k in s1:
                     len1 -= lenk[k]
                     s1.pop(k)
                     winbids1.pop(k)
@@ -658,60 +647,7 @@ def kmeans(s,winbids,losebids,minPrice,maxPrice,info):
     fout.write('\n')
     fout.close()
     return s1,s2,winbids1,winbids2,losebids1,losebids2
-'''
-#dataset is a list of lists
-#dataset[i] is the ith data
-#dataset[i][j] is the jth feature of the ith data
-#dataset[i][0] is market price
-#recursive version
-#this function need modification
-def decisionTree1(dataset,nodeIndex):
-    if len(dataset)==0:
-        return 0
-    priceSet = [data[PAY_PRICE_INDEX] for data in dataset]
-    minPrice = eval(min(priceSet))
-    maxPrice = eval(max(priceSet))
-    maxKLD = 0
-    bestFeat = 0
-    for featIndex in range(0,len(dataset[0])):
-        if featIndex not in FEATURE_LIST:
-            continue
-        s = dataset2s(dataset,featIndex)
-        if len(s.keys())==1:
-            continue
-        tmpS1,tmpS2 = kmeans(s,minPrice,maxPrice)
-        q1 = calProbDistribution(tmpS1,minPrice,maxPrice,cmd)
-        q2 = calProbDistribution(tmpS2,minPrice,maxPrice,cmd)
-        KLD = KLDivergence(q1,q2)
-        if maxKLD < KLD:
-            maxKLD = KLD
-            bestFeat = featIndex
-            s1 = tmpS1
-            s2 = tmpS2
-    dataset1 = s2dataset(s1,dataset,bestFeat)
-    dataset2 = s2dataset(s2,dataset,bestFeat)
 
-    #assignment for node market price distribution
-    nodeData = {}
-    if len(dataset1)>3000:      #left child
-        tmpData = decisionTree1(dataset1,2*nodeIndex)
-        for k in tmpData.keys():
-            nodeData[k] = tmpData[k]
-    else :
-        nodeData[2*nodeIndex] = dataset1
-    if len(dataset1)>3000:      #right child
-        tmpData = decisionTree1(dataset2,2*nodeIndex+1)
-        for k in tmpData.keys():
-            nodeData[k] = tmpData[k]
-    else :
-        nodeData[2*nodeIndex+1] = dataset2
-
-    return nodeData
-'''
-#dataset is a list of lists
-#dataset[i] is the ith data
-#dataset[i][j] is the jth feature of the ith data
-#iterative version
 def decisionTree2(_dataset,info):
     fout_nodeData = open(info.fname_nodeData,'w')
     #clear fout_nodeInfo
@@ -724,12 +660,7 @@ def decisionTree2(_dataset,info):
     fout_testKmeans = open(info.fname_testKmeans,'w')
     fout_testKmeans.close()
 
-    if len(_dataset)==0:
-        return 0
-    if len(_dataset[0])==0:
-        return 0
-
-    priceSet = [eval(data[PAY_PRICE_INDEX]) for data in _dataset]
+    priceSet = [int(data[PAY_PRICE_INDEX]) for data in _dataset]
     minPrice = 0
     maxPrice = max(priceSet)
     nodeData = {}
@@ -742,18 +673,18 @@ def decisionTree2(_dataset,info):
     while len(iStack)!=0:
         nodeIndex = iStack.pop()
         dataset = dataStack.pop()
-        print "nodeIndex = "+str(nodeIndex)
+        print("nodeIndex = "+str(nodeIndex))
         if 2*nodeIndex >= 2**info.treeDepth:
             nodeData[nodeIndex] = deepcopy(dataset)
             continue
         maxKLD = -1.0
         bestFeat = 0
         count = 0       # detect if there's no feature to split
-        for featIndex in range(0,len(dataset[0])):
+        for featIndex in range(len(dataset[0])):
             if featIndex not in FEATURE_LIST:
                 continue
-            print featIndex,
-            s,winbids,losebids = dataset2s(dataset,featIndex)
+            # print(featIndex,)
+            s, winbids, losebids = dataset2s(dataset, featIndex)
             if len(s.keys())<=1:
                 continue
             count += 1
@@ -773,11 +704,10 @@ def decisionTree2(_dataset,info):
                 bestFeat = featIndex
                 s1 = deepcopy(tmpS1)
                 s2 = deepcopy(tmpS2)
-        print
 
-        print bestFeat
-        print s1.keys()
-        print s2.keys()
+        print("bestFeat = "+str(bestFeat))
+        # print(s1.keys())
+        # print(s2.keys())
         if count==0 or len(s1.keys())==0 or len(s2.keys())==0:        # no feature can split
             nodeData[nodeIndex] = deepcopy(dataset)
             continue
@@ -788,11 +718,11 @@ def decisionTree2(_dataset,info):
             nodeData[nodeIndex] = deepcopy(dataset)
             continue
 
-        nodeInfos[nodeIndex] = NodeInfo(nodeIndex,bestFeat,maxKLD,deepcopy(s1.keys()),deepcopy(s2.keys()))
+        nodeInfos[nodeIndex] = NodeInfo(nodeIndex,bestFeat,maxKLD,deepcopy(list(s1.keys())),deepcopy(list(s2.keys())))
         nodeInfos[nodeIndex].write(info.fname_nodeInfo,'a')
 
-        print len(dataset1)
-        print len(dataset2)
+        # print(len(dataset1))
+        # print(len(dataset2))
         if len(dataset2)>2*info.leafSize:
             iStack.append(2*nodeIndex+1)
             dataStack.append(deepcopy(dataset2))
@@ -805,17 +735,17 @@ def decisionTree2(_dataset,info):
             nodeData[2*nodeIndex] = deepcopy(dataset1)
 
     # fout_nodeData
-    for k in nodeData.keys():
+    for k in nodeData:
         fout_nodeData.write('nodeIndex '+str(k)+' len '+str(len(nodeData[k]))+'\n')
         lines = []
-        for i in range(0,len(nodeData[k])):
-            lines.append(" ".join(nodeData[k][i])+'\n')
+        for i in range(len(nodeData[k])):
+            lines.append("\t".join(nodeData[k][i])+'\n')
         fout_nodeData.writelines(lines)
     fout_nodeData.close()
 
     nodeData.clear()
 
-    return nodeData,nodeInfos
+    return nodeData, nodeInfos
 
 def mywrite(q,text,info):
     fout_monitor = open(info.fname_monitor,'a')

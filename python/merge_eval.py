@@ -1,11 +1,11 @@
 from DecisionTree import *
 
-MODEL_LIST = ['baseline_kdd15','normal_baseline','survival_baseline','normal_tree','survival_tree']
+MODEL_LIST = ['survival_tree']
 
 def merge_eval(campaign_list):
-    IFROOT = '..\\data\\SurvivalModel\\'
-    IFROOT_KDD15 = '..\\data\\baseline_kdd15_Rversion\\'
-    OFROOT = '..\\data\\evaluation\\'
+    IFROOT = '../data/SurvivalModel/'
+    IFROOT_KDD15 = '../data/baseline_kdd15_Rversion/'
+    OFROOT = '../data/evaluation/'
     suffix_list = ['n','s','f']
 
     params_anlp = {}
@@ -70,28 +70,28 @@ def merge_eval(campaign_list):
             for mode in MODE_LIST:
                 mode_name = MODE_NAME_LIST[mode]
                 # baseline
-                i = 0
-                ifname = IFROOT+campaign+'\\'+mode_name+'\\baseline_'+campaign+suffix_list[mode]+'.txt'
-                fin = open(ifname,'r')
-                lines = fin.readlines()
-                for line in lines:
-                    if i==0:
-                        i+=1
-                        continue
-                    if len(line)<4:
-                        continue
-                    items = line.split()
-                    if items[0]=='Average':
-                        anlps[campaign][mode_name+'_baseline'] = eval(items[5])
-                        N[campaign] = eval(items[8])
-                    if items[0]=='KLD':
-                        KLD[campaign][mode_name+'_baseline'] = eval(items[2])
-                fin.close()
+                # i = 0
+                # ifname = IFROOT+campaign+'/'+mode_name+'/baseline_'+campaign+suffix_list[mode]+'.txt'
+                # fin = open(ifname,'r')
+                # lines = fin.readlines()
+                # for line in lines:
+                #     if i==0:
+                #         i+=1
+                #         continue
+                #     if len(line)<4:
+                #         continue
+                #     items = line.split()
+                #     if items[0]=='Average':
+                #         anlps[campaign][mode_name+'_baseline'] = eval(items[5])
+                #         N[campaign] = eval(items[8])
+                #     if items[0]=='KLD':
+                #         KLD[campaign][mode_name+'_baseline'] = eval(items[2])
+                # fin.close()
 
                 # evaluation anlp
                 i = 0
-                ifname = IFROOT+campaign+'\\'+mode_name+'\\paraTune\\'+params_anlp[mode][campaign]+'\\evaluation_'+campaign+suffix_list[mode]+'.txt'
-                #ifname = IFROOT+campaign+'\\'+mode_name+'\\evaluation_'+campaign+suffix_list[mode]+'.txt'
+                ifname = IFROOT+campaign+'/'+mode_name+'/paraTune/'+params_anlp[mode][campaign]+'/evaluation_'+campaign+suffix_list[mode]+'.txt'
+                #ifname = IFROOT+campaign+'/'+mode_name+'/evaluation_'+campaign+suffix_list[mode]+'.txt'
                 fin = open(ifname,'r')
                 lines = fin.readlines()
                 for line in lines:
@@ -107,8 +107,8 @@ def merge_eval(campaign_list):
 
                 # evaluation kld
                 i = 0
-                ifname = IFROOT+campaign+'\\'+mode_name+'\\paraTune\\'+params_kld[mode][campaign]+'\\evaluation_'+campaign+suffix_list[mode]+'.txt'
-                #ifname = IFROOT+campaign+'\\'+mode_name+'\\evaluation_'+campaign+suffix_list[mode]+'.txt'
+                ifname = IFROOT+campaign+'/'+mode_name+'/paraTune/'+params_kld[mode][campaign]+'/evaluation_'+campaign+suffix_list[mode]+'.txt'
+                #ifname = IFROOT+campaign+'/'+mode_name+'/evaluation_'+campaign+suffix_list[mode]+'.txt'
                 fin = open(ifname,'r')
                 lines = fin.readlines()
                 for line in lines:
@@ -123,23 +123,23 @@ def merge_eval(campaign_list):
                 fin.close()
 
             # kdd15
-            i = 0
-            ifname = IFROOT_KDD15+campaign+'\\baseline_kdd15_'+campaign+'.txt'
-            fin = open(ifname,'r')
-            lines = fin.readlines()
-            for line in lines:
-                if i==0:
-                    i+=1
-                    continue
-                if len(line)<4:
-                    continue
-                items = line.split()
-                if items[0]=='Average':
-                    anlps[campaign]['baseline_kdd15'] = eval(items[5])
-                if items[0]=='KLD':
-                    KLD[campaign]['baseline_kdd15'] = eval(items[2])
-
-            fin.close()
+            # i = 0
+            # ifname = IFROOT_KDD15+campaign+'/baseline_kdd15_'+campaign+'.txt'
+            # fin = open(ifname,'r')
+            # lines = fin.readlines()
+            # for line in lines:
+            #     if i==0:
+            #         i+=1
+            #         continue
+            #     if len(line)<4:
+            #         continue
+            #     items = line.split()
+            #     if items[0]=='Average':
+            #         anlps[campaign]['baseline_kdd15'] = eval(items[5])
+            #     if items[0]=='KLD':
+            #         KLD[campaign]['baseline_kdd15'] = eval(items[2])
+            #
+            # fin.close()
 
     # calculate overall index
     anlp_all = {}
@@ -181,22 +181,22 @@ def merge_eval(campaign_list):
     fout.close()
 
     # print
-    print '\t\tANLP\t\t\t\t\tKLD'
-    print 'Campaign\tMM\tNM\tSM\tNTM\tSTM\tMM\tNM\tSM\tNTM\tSTM'
+    print('\t\tANLP\t\t\t\t\tKLD')
+    print('Campaign\tMM\tNM\tSM\tNTM\tSTM\tMM\tNM\tSM\tNTM\tSTM')
     for campaign in campaign_list:
-        print campaign+'\t',
+        print(campaign+'\t',)
         for model in MODEL_LIST:
-            print '\t%.4f'%anlps[campaign][model],
+            print('\t%.4f'%anlps[campaign][model],)
         for model in MODEL_LIST:
-            print '\t%.4f'%KLD[campaign][model],
-        print '\n'
-    print 'overall\t',
+            print('\t%.4f'%KLD[campaign][model],)
+        print('\n')
+    print('overall\t',)
     for model in MODEL_LIST:
-        print '\t%.4f'%anlp_all[model],
+        print('\t%.4f'%anlp_all[model],)
     for model in MODEL_LIST:
-        print '\t%.4f'%KLD_all[model],
-    print
-    print
+        print('\t%.4f'%KLD_all[model],)
+    # print
+    # print
 
 if __name__ == '__main__':
     merge_eval(CAMPAIGN_LIST)

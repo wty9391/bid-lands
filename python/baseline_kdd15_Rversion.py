@@ -64,7 +64,7 @@ def baseline_kdd15_Rversion0(info):
     fout_w.close()
 
     # n calculation
-    print time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())),"n calculation begins."
+    print (time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())),"n calculation begins.")
     minPrice = 0
     maxPrice = max(wt)
     n = [0.]*UPPER
@@ -78,7 +78,7 @@ def baseline_kdd15_Rversion0(info):
     # evaluation
     fout_baseline_kdd15 = open(info.fname_baseline_kdd15,'w')
     fout_baseline_kdd15.write("baseline_kdd15 campaign "+str(info.campaign)+" basebid "+info.basebid+'\n')
-    print "baseline campaign "+str(info.campaign)+" basebid "+info.basebid
+    print("baseline campaign "+str(info.campaign)+" basebid "+info.basebid)
     for step in STEP_LIST:
         qi = changeBucketUniform(q,step)
         ni = deepcopy(n)
@@ -87,8 +87,8 @@ def baseline_kdd15_Rversion0(info):
 
         fout_baseline_kdd15.write("bucket "+str(bucket)+" step "+str(step)+"\n")
         fout_baseline_kdd15.write("Average negative log probability = "+str(anlp)+"  N = "+str(N)+"\n")
-        print "bucket "+str(bucket)+" step "+str(step)
-        print "Average negative log probability = "+str(anlp)+"  N = "+str(N)
+        print("bucket "+str(bucket)+" step "+str(step))
+        print("Average negative log probability = "+str(anlp)+"  N = "+str(N))
 
     # KLD
     bucket = len(q)
@@ -97,8 +97,8 @@ def baseline_kdd15_Rversion0(info):
     N = sum(n)
     fout_baseline_kdd15.write("bucket "+str(bucket)+" step "+str(step)+"\n")
     fout_baseline_kdd15.write("KLD = "+str(KLD)+"  N = "+str(N)+"\n")
-    print "bucket "+str(bucket)+" step "+str(step)
-    print "KLD = "+str(KLD)+"  N = "+str(N)
+    print("bucket "+str(bucket)+" step "+str(step))
+    print("KLD = "+str(KLD)+"  N = "+str(N))
 
     fout_baseline_kdd15.close()
     fout_q.close()
@@ -109,15 +109,15 @@ def baseline_kdd15_Rversion0(info):
 
 def baseline_kdd15_Rversion(campaign_list):
     BASE_BID = '0'
-    IFROOT_TRAIN = '..\\data\\kdd15\\WinningPrice\\'
-    IFROOT_TEST = '..\\make-ipinyou-data\\'
-    OFROOT = '..\\data\\baseline_kdd15_Rversion\\'
+    IFROOT_TRAIN = '../data/kdd15/WinningPrice/'
+    IFROOT_TEST = '../make-ipinyou-data/'
+    OFROOT = '../data/baseline_kdd15_Rversion/'
 
     q = {}
     w = {}
     for campaign in campaign_list:
-        print
-        print campaign
+        # print
+        print(campaign)
         # create os directory
         if not os.path.exists(OFROOT+campaign):
             os.makedirs(OFROOT+campaign)
@@ -127,10 +127,10 @@ def baseline_kdd15_Rversion(campaign_list):
         info.campaign = campaign
         info.laplace = LAPLACE
         info.fname_trainlog = IFROOT_TRAIN+'price_all_'
-        info.fname_testlog = IFROOT_TEST+campaign+'\\test.yzx.txt'
-        info.fname_baseline_kdd15 = OFROOT+campaign+'\\baseline_kdd15_'+campaign+'.txt'
-        info.fname_baseline_kdd15_q = OFROOT+campaign+'\\baseline_kdd15_q_'+campaign+'.txt'
-        info.fname_baseline_kdd15_w = OFROOT+campaign+'\\baseline_kdd15_w_'+campaign+'.txt'
+        info.fname_testlog = IFROOT_TEST+campaign+'/test.yzx.txt'
+        info.fname_baseline_kdd15 = OFROOT+campaign+'/baseline_kdd15_'+campaign+'.txt'
+        info.fname_baseline_kdd15_q = OFROOT+campaign+'/baseline_kdd15_q_'+campaign+'.txt'
+        info.fname_baseline_kdd15_w = OFROOT+campaign+'/baseline_kdd15_w_'+campaign+'.txt'
 
         q[campaign],w[campaign] = baseline_kdd15_Rversion0(info)
 

@@ -47,7 +47,7 @@ def plotSubBidLands(q1,q2,nodeInfo):
     close(1)
 
 def getNodeInfos(info):
-    print "getNodeInfos()"
+    print("getNodeInfos()")
     fin_nodeInfo = open(info.fname_nodeInfo,'r')
     lines = fin_nodeInfo.readlines()
 
@@ -56,7 +56,7 @@ def getNodeInfos(info):
     for line in lines:
         lineIndex += 1
         if len(line)==0:
-            print "Empty line: "+str(lineIndex)
+            print("Empty line: "+str(lineIndex))
             continue
         items = line.split()
 
@@ -75,13 +75,12 @@ def getNodeInfos(info):
                 s2.append(items[i])
             nodeInfos[nodeIndex] = NodeInfo(nodeIndex,bestFeat,KLD,deepcopy(s1),deepcopy(s2))
 
-    print "getNodeInfos() ends."
+    print("getNodeInfos() ends.")
     return nodeInfos
 
 def getTrainPriceCount(info):
-    print "getTrainPriceCount()"
+    print("getTrainPriceCount()")
     fin_nodeData = open(info.fname_nodeData,'r')
-    lines = fin_nodeData.readlines()
     wcount = {}
     winbids = {}
     losebids = {}
@@ -89,34 +88,35 @@ def getTrainPriceCount(info):
     maxPrice = 0
     mp = {}
 
-    for line in lines:
-        items = line.split()
+    for line in fin_nodeData:
+        items = line.split('\t')
         if items[0]=="nodeIndex":
-            nodeIndex = eval(items[1])
-            if not wcount.has_key(nodeIndex):
+            nodeIndex = int(items[1])
+            if nodeIndex not in wcount:
                 wcount[nodeIndex] = [0]*UPPER
                 winbids[nodeIndex] = {}
                 losebids[nodeIndex] = {}
                 mp[nodeIndex] = [0]*UPPER
             continue
 
-        if len(items)<WIN_AUCTION_INDEX:
-            for i in range(0,len(items)):
-                print str(items[i]),
-            print
+        if len(items) < WIN_AUCTION_INDEX:
+            print("item length error")
+            # for i in range(len(items)):
+            #     print(str(items[i]),)
+            # print
             continue
 
-        pay_price = eval(items[PAY_PRICE_INDEX])
+        pay_price = int(items[PAY_PRICE_INDEX])
         mp[nodeIndex][pay_price] += 1
 
-        if eval(items[WIN_AUCTION_INDEX])==0:
-            mybidprice = eval(items[MY_BID_INDEX])
-            if not losebids[nodeIndex].has_key(mybidprice):
+        if int(items[WIN_AUCTION_INDEX])==0:
+            mybidprice = int(items[MY_BID_INDEX])
+            if mybidprice not in losebids[nodeIndex]:
                 losebids[nodeIndex][mybidprice] = 0
             losebids[nodeIndex][mybidprice] += 1
             continue
 
-        if not winbids[nodeIndex].has_key(pay_price):
+        if pay_price not in winbids[nodeIndex]:
             winbids[nodeIndex][pay_price] = 0
         winbids[nodeIndex][pay_price] += 1
 
@@ -127,11 +127,11 @@ def getTrainPriceCount(info):
         if maxPrice<pay_price:
             maxPrice = pay_price
 
-    print "getTrainPriceSet() ends."
+    print("getTrainPriceSet() ends.")
     return wcount,winbids,losebids,minPrice,maxPrice,mp
 
 def getQ(info):
-    print "getQ()"
+    print("getQ()")
     fout_q = open(info.fname_tree_q,'w')
     fout_w = open(info.fname_tree_w,'w')
     q = {}
@@ -141,7 +141,7 @@ def getQ(info):
     wcount,winbids,losebids,minPrice,maxPrice,mp = getTrainPriceCount(info)
 
     # get q
-    for k in wcount.keys():
+    for k in wcount:
         q[k] = calProbDistribution(wcount[k],winbids[k],losebids[k],minPrice,maxPrice,info)
         w[k] = q2w(q[k])
         num[k] = sum(wcount[k])
@@ -151,46 +151,44 @@ def getQ(info):
         bnum[k] = len(b)
 
     # fout
-    for k in q.keys():
+    for k in q:
         fout_q.write('nodeIndex '+str(k)+' num '+str(num[k])+' bnum '+str(bnum[k])+'\n')
         if len(q[k])==0:
             continue
-        for i in range(0,len(q[k])):
-            fout_q.write(str(q[k][i])+' ')
+        for i in range(len(q[k])):
+            fout_q.write(str(q[k][i])+'\t')
         fout_q.write(str(sum(q[k])))
-        fout_q.write(' '+str(num[k])+' '+str(bnum[k]))
+        fout_q.write('\t'+str(num[k])+'\t'+str(bnum[k]))
         fout_q.write('\n')
     fout_q.close()
-    for k in w.keys():
-        fout_w.write('nodeIndex '+str(k)+' len '+str(num[k])+'\n')
+    for k in w:
+        fout_w.write('nodeIndex\t'+str(k)+'\tlen\t'+str(num[k])+'\n')
         if len(w[k])==0:
             continue
         fout_w.write(str(w[k][0]))
-        for i in range(1,len(w[k])):
-            fout_w.write(' '+str(w[k][i]))
+        for i in range(1, len(w[k])):
+            fout_w.write('\t'+str(w[k][i]))
         fout_w.write('\n')
     fout_w.close()
 
-    print "getQ() ends."
+    print("getQ() ends.")
     return q,minPrice,maxPrice
 
 def getN(info):
-    print "getN()"
+    print("getN()")
     testset = getTestData(info.fname_testlog)
     nodeInfos = getNodeInfos(info)
     n = {}
-    priceSet = [eval(data[PAY_PRICE_INDEX]) for data in testset]
+    priceSet = [int(data[PAY_PRICE_INDEX]) for data in testset]
     minPrice = 0
     maxPrice = max(priceSet)
 
-    for i in range(0,len(testset)):
-        if i%10000==0:
-            print str(i),
+    for i in range(len(testset)):
 
-        pay_price = eval(testset[i][PAY_PRICE_INDEX])
+        pay_price = int(testset[i][PAY_PRICE_INDEX])
         nodeIndex = 1
         if len(nodeInfos.keys())==0:
-            if not n.has_key(nodeIndex):
+            if nodeIndex not in n:
                 n[nodeIndex] = [0.]*UPPER
             n[nodeIndex][pay_price] += 1
             continue
@@ -203,37 +201,36 @@ def getN(info):
                 nodeIndex = 2*nodeIndex
             elif testset[i][bestFeat] in s2_keys:
                 nodeIndex = 2*nodeIndex+1
-            else :  # feature value doesn't appear in train data
+            else:  # feature value doesn't appear in train data
                 nodeIndex = 2*nodeIndex+randint(0,1)
 
-            if not nodeInfos.has_key(nodeIndex):
-                if not n.has_key(nodeIndex):
+            if nodeIndex not in nodeInfos:
+                if nodeIndex not in n:
                     n[nodeIndex] = [0.]*UPPER
                 n[nodeIndex][pay_price] += 1
 
                 break
 
-    print "\ngetN() ends."
+    print("\ngetN() ends.")
     return n,minPrice,maxPrice
 
 def getANLP(q,n,minPrice,maxPrice):
     anlp = 0.0
     N = 0
-    if isinstance(q,dict):
-        for k in n.keys():
-            if not q.has_key(k):
-                print k
+    if isinstance(q, dict):
+        for k in n:
+            if k not in q:
                 continue
-            for i in range(0,len(n[k])):
+            for i in range(len(n[k])):
                 if i > len(q[k])-1:   # test price doesn't appear in train price
                     break    # remain to be modify
                 if q[k][i]<0:
-                    print q[k][i]
+                    pass
                 anlp += -log(q[k][i])*n[k][i]
                 N += n[k][i]
         anlp = anlp/N
-    if isinstance(q,list):
-        for i in range(0,len(n)):
+    if isinstance(q, list):
+        for i in range(len(n)):
             if i > len(q)-1:
                 break
             anlp += -log(q[i])*n[i]
@@ -246,8 +243,8 @@ def evaluate(info):
     fout_evaluation = open(info.fname_evaluation,'w')
     fout_evaluation.write("evaluation campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid+'\n')
     fout_evaluation.write("laplace "+str(info.laplace)+"\n")
-    print "evaluation campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid
-    print "laplace "+str(info.laplace)
+    print("evaluation campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid)
+    print("laplace "+str(info.laplace))
 
     _q,trainMinPrice,trainMaxPrice = getQ(info)
     _n,testMinPrice,testMaxPrice = getN(info)
@@ -255,101 +252,101 @@ def evaluate(info):
         if eval_mode == '0':
             ### ANLP
             fout_evaluation.write("eval mode = ANLP\n")
-            print "eval mode = ANLP"
+            print("eval mode = ANLP")
             bucket = 0
             anlp = 0
             N = 0
             for step in STEP_LIST:
                 q = deepcopy(_q)
                 n = deepcopy(_n)
-                for k in q.keys():
+                for k in q:
                     q[k] = changeBucketUniform(q[k],step)
                     bucket = len(q[k])
                 anlp,N = getANLP(q,n,trainMinPrice,trainMaxPrice)
                 # fout_evaluation
                 fout_evaluation.write("bucket "+str(bucket)+" step "+str(step)+"\n")
                 fout_evaluation.write("Average negative log probability = "+str(anlp)+"  N = "+str(N)+"\n")
-                print "bucket "+str(bucket)+" step "+str(step)
-                print "Average negative log probability = "+str(anlp)+"  N = "+str(N)
+                print("bucket "+str(bucket)+" step "+str(step))
+                print("Average negative log probability = "+str(anlp)+"  N = "+str(N))
 
             ### KLD
             fout_evaluation.write("eval mode = KLD\n")
-            print "eval mode = KLD"
+            print("eval mode = KLD")
             q = deepcopy(_q)
             n = deepcopy(_n)
             w = q2w(q)
             KLD = 0.
             N = 0
-            for k in q.keys():
-                if not n.has_key(k):
+            for k in q:
+                if k not in n:
                     continue
                 qtk = calProbDistribution_n(n[k],trainMinPrice,trainMaxPrice,info)
                 wtk = q2w(qtk)
                 count = sum(n[k])
-                KLD += KLDivergence(q[k],qtk)*count
+                KLD += KLDivergence(q[k], qtk)*count
                 N += count
             KLD /= N
 
             # fout_evaluation
-            bucket = len(q[q.keys()[0]])
+            bucket = len(q[list(q.keys())[0]])
             step = STEP_LIST[0]
             fout_evaluation.write("bucket "+str(bucket)+" step "+str(step)+"\n")
             fout_evaluation.write("KLD = "+str(KLD)+"  N = "+str(N)+"\n")
-            print "bucket "+str(bucket)+" step "+str(step)
-            print "KLD = "+str(KLD)+"  N = "+str(N)
+            print("bucket "+str(bucket)+" step "+str(step))
+            print("KLD = "+str(KLD)+"  N = "+str(N))
 
     fout_evaluation.close()
     return
 
 if __name__ == '__main__':
-    IFROOT = '..\\make-ipinyou-data\\'
-    OFROOT = '..\\data\\SurvivalModel\\'
+    IFROOT = '../make-ipinyou-data/'
+    OFROOT = '../data/SurvivalModel/'
     BASE_BID = '0'
 
     suffix_list = ['n','s','f']
 
     for campaign in CAMPAIGN_LIST:
-        print
-        print campaign
+        # print
+        print(campaign)
         for mode in MODE_LIST:
             for laplace in [LAPLACE]:
-                print MODE_NAME_LIST[mode],
+                print(MODE_NAME_LIST[mode],)
                 modeName = MODE_NAME_LIST[mode]
                 suffix = suffix_list[mode]
 
                 # create os directory
-                if not os.path.exists(OFROOT+campaign+'\\'+modeName+'\\plot'):
-                    os.makedirs(OFROOT+campaign+'\\'+modeName+'\\plot')
+                if not os.path.exists(OFROOT+campaign+'/'+modeName+'/plot'):
+                    os.makedirs(OFROOT+campaign+'/'+modeName+'/plot')
 
                 info = Info()
                 info.laplace = laplace
                 info.basebid = BASE_BID
                 info.mode = mode
                 info.campaign = campaign
-                info.fname_trainlog = IFROOT+campaign+'\\train.log.txt'
-                info.fname_testlog = IFROOT+campaign+'\\test.log.txt'
-                info.fname_nodeData = OFROOT+campaign+'\\'+modeName+'\\nodeData_'+campaign+suffix+'.txt'
-                info.fname_nodeInfo = OFROOT+campaign+'\\'+modeName+'\\nodeInfos_'+campaign+suffix+'.txt'
+                info.fname_trainlog = IFROOT+campaign+'/train.log.txt'
+                info.fname_testlog = IFROOT+campaign+'/test.log.txt'
+                info.fname_nodeData = OFROOT+campaign+'/'+modeName+'/nodeData_'+campaign+suffix+'.txt'
+                info.fname_nodeInfo = OFROOT+campaign+'/'+modeName+'/nodeInfos_'+campaign+suffix+'.txt'
 
-                info.fname_trainbid = IFROOT+campaign+'\\train_bid.txt'
-                info.fname_testbid = IFROOT+campaign+'\\test_bid.txt'
-                info.fname_baseline = OFROOT+campaign+'\\'+modeName+'\\baseline_'+campaign+suffix+'.txt'
+                info.fname_trainbid = IFROOT+campaign+'/train_bid.txt'
+                info.fname_testbid = IFROOT+campaign+'/test_bid.txt'
+                info.fname_baseline = OFROOT+campaign+'/'+modeName+'/baseline_'+campaign+suffix+'.txt'
 
-                info.fname_monitor = OFROOT+campaign+'\\'+modeName+'\\monitor_'+campaign+suffix+'.txt'
-                info.fname_testKmeans = OFROOT+campaign+'\\'+modeName+'\\testKmeans_'+campaign+suffix+'.txt'
-                info.fname_testSurvival = OFROOT+campaign+'\\'+modeName+'\\testSurvival_'+campaign+suffix+'.txt'
+                info.fname_monitor = OFROOT+campaign+'/'+modeName+'/monitor_'+campaign+suffix+'.txt'
+                info.fname_testKmeans = OFROOT+campaign+'/'+modeName+'/testKmeans_'+campaign+suffix+'.txt'
+                info.fname_testSurvival = OFROOT+campaign+'/'+modeName+'/testSurvival_'+campaign+suffix+'.txt'
 
-                info.fname_evaluation = OFROOT+campaign+'\\'+modeName+'\\evaluation_'+campaign+suffix+'.txt'
-                info.fname_baseline_q = OFROOT+campaign+'\\'+modeName+'\\baseline_q_'+campaign+suffix+'.txt'
-                info.fname_tree_q = OFROOT+campaign+'\\'+modeName+'\\tree_q_'+campaign+suffix+'.txt'
-                info.fname_test_q = OFROOT+campaign+'\\'+modeName+'\\test_q_'+campaign+suffix+'.txt'
-                info.fname_baseline_w = OFROOT+campaign+'\\'+modeName+'\\baseline_w_'+campaign+suffix+'.txt'
-                info.fname_tree_w = OFROOT+campaign+'\\'+modeName+'\\tree_w_'+campaign+suffix+'.txt'
-                info.fname_test_w = OFROOT+campaign+'\\'+modeName+'\\test_w_'+campaign+suffix+'.txt'
+                info.fname_evaluation = OFROOT+campaign+'/'+modeName+'/evaluation_'+campaign+suffix+'.txt'
+                info.fname_baseline_q = OFROOT+campaign+'/'+modeName+'/baseline_q_'+campaign+suffix+'.txt'
+                info.fname_tree_q = OFROOT+campaign+'/'+modeName+'/tree_q_'+campaign+suffix+'.txt'
+                info.fname_test_q = OFROOT+campaign+'/'+modeName+'/test_q_'+campaign+suffix+'.txt'
+                info.fname_baseline_w = OFROOT+campaign+'/'+modeName+'/baseline_w_'+campaign+suffix+'.txt'
+                info.fname_tree_w = OFROOT+campaign+'/'+modeName+'/tree_w_'+campaign+suffix+'.txt'
+                info.fname_test_w = OFROOT+campaign+'/'+modeName+'/test_w_'+campaign+suffix+'.txt'
 
-                info.fname_pruneNode = OFROOT+campaign+'\\'+modeName+'\\pruneNode_'+campaign+suffix+'.txt'
-                info.fname_pruneEval = OFROOT+campaign+'\\'+modeName+'\\pruneEval_'+campaign+suffix+'.txt'
-                info.fname_testwin = OFROOT+campaign+'\\'+modeName+'\\testwin_'+campaign+suffix+'.txt'
+                info.fname_pruneNode = OFROOT+campaign+'/'+modeName+'/pruneNode_'+campaign+suffix+'.txt'
+                info.fname_pruneEval = OFROOT+campaign+'/'+modeName+'/pruneEval_'+campaign+suffix+'.txt'
+                info.fname_testwin = OFROOT+campaign+'/'+modeName+'/testwin_'+campaign+suffix+'.txt'
 
                 #evaluation
                 evaluate(info)

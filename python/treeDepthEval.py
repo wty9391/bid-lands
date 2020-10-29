@@ -7,7 +7,7 @@ import time
 import numpy as np
 
 def getNodeInfos(info):
-    print "getNodeInfos()"
+    print("getNodeInfos()")
     fin_nodeInfo = open(info.fname_nodeInfo,'r')
     lines = fin_nodeInfo.readlines()
 
@@ -16,7 +16,7 @@ def getNodeInfos(info):
     for line in lines:
         lineIndex += 1
         if len(line)==0:
-            print "Empty line: "+str(lineIndex)
+            print("Empty line: "+str(lineIndex))
             continue
         items = line.split()
 
@@ -36,11 +36,11 @@ def getNodeInfos(info):
             if 2*nodeIndex<2**info.treeDepth:       # treeDepth control
                 nodeInfos[nodeIndex] = NodeInfo(nodeIndex,bestFeat,KLD,deepcopy(s1),deepcopy(s2))
 
-    print "getNodeInfos() ends."
+    print("getNodeInfos() ends.")
     return nodeInfos
 
 def getTrainPriceCount(info):
-    print "getTrainPriceCount()"
+    print("getTrainPriceCount()")
     fin_nodeData = open(info.fname_nodeData,'r')
     lines = fin_nodeData.readlines()
     wcount = {}
@@ -56,7 +56,7 @@ def getTrainPriceCount(info):
             while nodeIndex>=2**info.treeDepth:     # treeDepth control
                 nodeIndex = long(nodeIndex)/2
 
-            if not wcount.has_key(nodeIndex):
+            if nodeIndex not in wcount:
                 wcount[nodeIndex] = [0]*UPPER
                 winbids[nodeIndex] = {}
                 losebids[nodeIndex] = {}
@@ -64,18 +64,18 @@ def getTrainPriceCount(info):
 
         if len(items)<WIN_AUCTION_INDEX:
             for i in range(0,len(items)):
-                print str(items[i]),
-            print
+                print(str(items[i]),)
+            # print
             continue
 
         if eval(items[WIN_AUCTION_INDEX])==0:
             mybidprice = eval(items[MY_BID_INDEX])
-            if not losebids[nodeIndex].has_key(mybidprice):
+            if mybidprice not in losebids[nodeIndex]:
                 losebids[nodeIndex][mybidprice] = 0
             losebids[nodeIndex][mybidprice] += 1
             continue
         pay_price = eval(items[PAY_PRICE_INDEX])
-        if not winbids[nodeIndex].has_key(pay_price):
+        if pay_price not in winbids[nodeIndex]:
             winbids[nodeIndex][pay_price] = 0
         winbids[nodeIndex][pay_price] += 1
 
@@ -86,11 +86,11 @@ def getTrainPriceCount(info):
         if maxPrice<pay_price:
             maxPrice = pay_price
 
-    print "getTrainPriceSet() ends."
+    print("getTrainPriceSet() ends.")
     return wcount,winbids,losebids,minPrice,maxPrice
 
 def getQ(info):
-    print "getQ()"
+    print("getQ()")
     fout_q = open(info.fname_tree_q,'w')
     fout_w = open(info.fname_tree_w,'w')
     q = {}
@@ -129,11 +129,11 @@ def getQ(info):
         fout_w.write('\n')
     fout_w.close()
 
-    print "getQ() ends."
+    print("getQ() ends.")
     return q,minPrice,maxPrice
 
 def getN(info):
-    print "getN()"
+    print("getN()")
     testset = getTestData(info.fname_testlog)
     nodeInfos = getNodeInfos(info)
     n = {}
@@ -144,12 +144,12 @@ def getN(info):
     start_time = time.clock()
     for i in range(0,len(testset)):
         if i%10000==0:
-            print str(i),
+            print(str(i),)
 
         pay_price = eval(testset[i][PAY_PRICE_INDEX])
         nodeIndex = 1
         if len(nodeInfos.keys())==0:
-            if not n.has_key(nodeIndex):
+            if nodeIndex not in n:
                 n[nodeIndex] = [0.]*UPPER
             n[nodeIndex][pay_price] += 1
             continue
@@ -165,21 +165,21 @@ def getN(info):
             else :  # feature value doesn't appear in train data
                 nodeIndex = 2*nodeIndex+randint(0,1)
 
-            if not nodeInfos.has_key(nodeIndex):
-                if not n.has_key(nodeIndex):
+            if nodeIndex not in nodeInfos:
+                if nodeIndex not in n:
                     n[nodeIndex] = [0.]*UPPER
                 n[nodeIndex][pay_price] += 1
 
                 break
     end_time = time.clock()
-    print '\nTime cost per sample distribution forecasting:',float((end_time-start_time))/len(testset)
-    fout = open('E:\\research\\RealTimeBidding\\data\\mydata\\output\\evaluation\\final\\time.txt','w')
+    print('\nTime cost per sample distribution forecasting:',float((end_time-start_time))/len(testset))
+    fout = open('E:/research/RealTimeBidding/data/mydata/output/evaluation/final/time.txt','w')
     fout.write("evaluation campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+'\n')
     fout.write("leafSize "+str(info.leafSize)+" treeDepth "+str(info.treeDepth)+" laplace "+str(info.laplace)+"\n")
     fout.write('Time cost per sample distribution forecasting: '+str(float((end_time-start_time))/len(testset))+'\n')
     fout.close()
 
-    print "getN() ends."
+    print("getN() ends.")
     return n,minPrice,maxPrice
 
 def getANLP(q,n,minPrice,maxPrice):
@@ -187,14 +187,14 @@ def getANLP(q,n,minPrice,maxPrice):
     N = 0
     if isinstance(q,dict):
         for k in n.keys():
-            if not q.has_key(k):
-                print k
+            if k not in q:
+                print(k)
                 continue
             for i in range(0,len(n[k])):
                 if i > len(q[k])-1:   # test price doesn't appear in train price
                     break    # remain to be modify
                 if q[k][i]<0:
-                    print q[k][i]
+                    print(q[k][i])
                 anlp += -log(q[k][i])*n[k][i]
                 N += n[k][i]
         anlp = anlp/N
@@ -212,8 +212,8 @@ def treeDepthEval0(info):
     fout_evaluation = open(info.fname_evaluation,'w')
     fout_evaluation.write("evaluation campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid+'\n')
     fout_evaluation.write("leafSize "+str(info.leafSize)+" treeDepthLimit "+str(info.treeDepth)+" laplace "+str(info.laplace)+"\n")
-    print "evaluation campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid
-    print "leafSize "+str(info.leafSize)+" treeDepth "+str(info.treeDepth)+" laplace "+str(info.laplace)
+    print("evaluation campaign "+str(info.campaign)+" mode "+MODE_NAME_LIST[info.mode]+" basebid "+info.basebid)
+    print("leafSize "+str(info.leafSize)+" treeDepth "+str(info.treeDepth)+" laplace "+str(info.laplace))
 
     _q,trainMinPrice,trainMaxPrice = getQ(info)
     _n,testMinPrice,testMaxPrice = getN(info)
@@ -224,7 +224,7 @@ def treeDepthEval0(info):
         if eval_mode == '0':
             ### ANLP
             fout_evaluation.write("eval mode = ANLP\n")
-            print "eval mode = ANLP"
+            print("eval mode = ANLP")
             bucket = 0
             anlp = 0
             N = 0
@@ -238,12 +238,12 @@ def treeDepthEval0(info):
                 # fout_evaluation
                 fout_evaluation.write("bucket "+str(bucket)+" step "+str(step)+"\n")
                 fout_evaluation.write("Average negative log probability = "+str(anlp)+"  N = "+str(N)+"\n")
-                print "bucket "+str(bucket)+" step "+str(step)
-                print "Average negative log probability = "+str(anlp)+"  N = "+str(N)
+                print("bucket "+str(bucket)+" step "+str(step))
+                print("Average negative log probability = "+str(anlp)+"  N = "+str(N))
 
             ### KLD & pearsonr
             fout_evaluation.write("eval mode = KLD\n")
-            print "eval mode = KLD"
+            print("eval mode = KLD")
             q = deepcopy(_q)
             n = deepcopy(_n)
             w = q2w(q)
@@ -252,7 +252,7 @@ def treeDepthEval0(info):
             pr_w = 0.
             N = 0
             for k in q.keys():
-                if not n.has_key(k):
+                if k not in n:
                     continue
                 qtk = calProbDistribution_n(n[k],trainMinPrice,trainMaxPrice,info)
                 wtk = q2w(qtk)
@@ -272,10 +272,10 @@ def treeDepthEval0(info):
             fout_evaluation.write("KLD = "+str(KLD)+"  N = "+str(N)+"\n")
             fout_evaluation.write("pearsonr_q = "+str(pr_q)+"  N = "+str(N)+"\n")
             fout_evaluation.write("pearsonr_w = "+str(pr_w)+"  N = "+str(N)+"\n")
-            print "bucket "+str(bucket)+" step "+str(step)
-            print "KLD = "+str(KLD)+"  N = "+str(N)
-            print "pearsonr_q = "+str(pr_q)+"  N = "+str(N)
-            print "pearsonr_w = "+str(pr_w)+"  N = "+str(N)
+            print("bucket "+str(bucket)+" step "+str(step))
+            print("KLD = "+str(KLD)+"  N = "+str(N))
+            print("pearsonr_q = "+str(pr_q)+"  N = "+str(N))
+            print("pearsonr_w = "+str(pr_w)+"  N = "+str(N))
 
     fout_evaluation.close()
     return
@@ -283,19 +283,19 @@ def treeDepthEval0(info):
 # run after paraTune:leafSize
 # generate evaluation of treeDepth with different leafSize
 def treeDepthEval(campaign_list):
-    IFROOT = '..\\make-ipinyou-data\\'
-    OFROOT = '..\\data\\SurvivalModel\\'
+    IFROOT = '../make-ipinyou-data/'
+    OFROOT = '../data/SurvivalModel/'
     BASE_BID = '0'
 
     suffix_list = ['n','s','f']
 
     for campaign in campaign_list:
-        print
-        print campaign
+        # print
+        print(campaign)
         for mode in MODE_LIST:
             for leafSize in [0,3000]:
                 for treeDepth in [1,2,3,4,5,6,8,10,18,22,28,30,40]:
-                    print MODE_NAME_LIST[mode],
+                    print(MODE_NAME_LIST[mode],)
                     modeName = MODE_NAME_LIST[mode]
                     suffix = suffix_list[mode]
 
@@ -309,22 +309,22 @@ def treeDepthEval(campaign_list):
                     info.treeDepth = treeDepth
 
                     # create os directory
-                    if not os.path.exists(OFROOT+campaign+'\\'+modeName+'\\paraTune'):
-                        os.makedirs(OFROOT+campaign+'\\'+modeName+'\\paraTune')
-                    if not os.path.exists(OFROOT+campaign+'\\'+modeName+'\\paraTune\\treeDepth_'+str(treeDepth)+'_leafSize_'+str(leafSize)):
-                        os.makedirs(OFROOT+campaign+'\\'+modeName+'\\paraTune\\treeDepth_'+str(treeDepth)+'_leafSize_'+str(leafSize))
-                    ofroot = OFROOT+campaign+'\\'+modeName+'\\paraTune\\treeDepth_'+str(treeDepth)+'_leafSize_'+str(leafSize)
-                    ifroot_leafSize = OFROOT+campaign+'\\'+modeName+'\\paraTune\\leafSize_'+str(leafSize)
+                    if not os.path.exists(OFROOT+campaign+'/'+modeName+'/paraTune'):
+                        os.makedirs(OFROOT+campaign+'/'+modeName+'/paraTune')
+                    if not os.path.exists(OFROOT+campaign+'/'+modeName+'/paraTune/treeDepth_'+str(treeDepth)+'_leafSize_'+str(leafSize)):
+                        os.makedirs(OFROOT+campaign+'/'+modeName+'/paraTune/treeDepth_'+str(treeDepth)+'_leafSize_'+str(leafSize))
+                    ofroot = OFROOT+campaign+'/'+modeName+'/paraTune/treeDepth_'+str(treeDepth)+'_leafSize_'+str(leafSize)
+                    ifroot_leafSize = OFROOT+campaign+'/'+modeName+'/paraTune/leafSize_'+str(leafSize)
 
-                    info.fname_testlog = IFROOT+campaign+'\\test.log.txt'
-                    info.fname_nodeData = ifroot_leafSize+'\\nodeData_'+campaign+suffix+'.txt'
-                    info.fname_nodeInfo = ifroot_leafSize+'\\nodeInfos_'+campaign+suffix+'.txt'
+                    info.fname_testlog = IFROOT+campaign+'/test.log.txt'
+                    info.fname_nodeData = ifroot_leafSize+'/nodeData_'+campaign+suffix+'.txt'
+                    info.fname_nodeInfo = ifroot_leafSize+'/nodeInfos_'+campaign+suffix+'.txt'
 
-                    info.fname_evaluation = ofroot+'\\evaluation_'+campaign+suffix+'.txt'
-                    info.fname_tree_q = ofroot+'\\tree_q_'+campaign+suffix+'.txt'
-                    info.fname_tree_w = ofroot+'\\tree_w_'+campaign+suffix+'.txt'
+                    info.fname_evaluation = ofroot+'/evaluation_'+campaign+suffix+'.txt'
+                    info.fname_tree_q = ofroot+'/tree_q_'+campaign+suffix+'.txt'
+                    info.fname_tree_w = ofroot+'/tree_w_'+campaign+suffix+'.txt'
 
-                    info.fname_testSurvival = ofroot+'\\testSurvival_'+campaign+suffix+'.txt'
+                    info.fname_testSurvival = ofroot+'/testSurvival_'+campaign+suffix+'.txt'
 
                     #evaluation
                     treeDepthEval0(info)
